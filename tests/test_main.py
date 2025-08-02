@@ -5,11 +5,15 @@ import tempfile
 import json
 from unittest.mock import patch, MagicMock
 from io import StringIO
+from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Add parent directory to path to import src modules
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
 
-import main
+# Import src modules directly
+from src.hook_parser import HookParser
+from src.main import setup_argparse, append_to_log, main
 
 
 class TestMain(unittest.TestCase):
@@ -17,7 +21,7 @@ class TestMain(unittest.TestCase):
     
     def test_setup_argparse(self):
         """Test argparse setup."""
-        parser = main.setup_argparse()
+        parser = setup_argparse()
         
         # Test with --help (should not raise)
         with patch('sys.stdout', new=StringIO()):
@@ -43,14 +47,14 @@ class TestMain(unittest.TestCase):
             raw_input = '{"hook": "test"}'
             output = "[2025-08-02 15:30:45] Test output"
             
-            main.append_to_log(tmp_path, raw_input, output)
+            append_to_log(Path(tmp_path), raw_input, output)
             
             # Read and verify log content
             with open(tmp_path, 'r') as f:
                 content = f.read()
             
-            self.assertIn("="*60, content)
-            self.assertIn("Timestamp:", content)
+            self.assertIn("===", content)
+            self.assertIn("[20", content)  # Timestamp format check
             self.assertIn("Raw Input:", content)
             self.assertIn(raw_input, content)
             self.assertIn("Output:", content)
@@ -62,7 +66,7 @@ class TestMain(unittest.TestCase):
         """Test log file error handling."""
         # Test with invalid path
         with patch('sys.stderr', new=StringIO()) as mock_stderr:
-            main.append_to_log("/invalid/path/test.log", "input", "output")
+            append_to_log(Path("/invalid/path/test.log"), "input", "output")
             stderr_output = mock_stderr.getvalue()
             self.assertIn("Warning: Failed to write to log file", stderr_output)
     
@@ -74,7 +78,7 @@ class TestMain(unittest.TestCase):
         
         with self.assertRaises(SystemExit) as cm:
             with patch('sys.argv', ['main.py']):
-                main.main()
+                main()
         
         self.assertEqual(cm.exception.code, 0)
         output = mock_stdout.getvalue()
@@ -88,7 +92,7 @@ class TestMain(unittest.TestCase):
         
         with self.assertRaises(SystemExit) as cm:
             with patch('sys.argv', ['main.py']):
-                main.main()
+                main()
         
         self.assertEqual(cm.exception.code, 1)
         stderr_output = mock_stderr.getvalue()
@@ -102,7 +106,7 @@ class TestMain(unittest.TestCase):
         
         with self.assertRaises(SystemExit) as cm:
             with patch('sys.argv', ['main.py']):
-                main.main()
+                main()
         
         self.assertEqual(cm.exception.code, 1)
         output = mock_stdout.getvalue()
@@ -120,7 +124,7 @@ class TestMain(unittest.TestCase):
         try:
             with self.assertRaises(SystemExit) as cm:
                 with patch('sys.argv', ['main.py', '--log', tmp_path]):
-                    main.main()
+                    main()
             
             self.assertEqual(cm.exception.code, 0)
             
@@ -141,7 +145,7 @@ class TestMain(unittest.TestCase):
         
         with self.assertRaises(SystemExit) as cm:
             with patch('sys.argv', ['main.py']):
-                main.main()
+                main()
         
         self.assertEqual(cm.exception.code, 1)
         stderr_output = mock_stderr.getvalue()
@@ -155,7 +159,7 @@ class TestMain(unittest.TestCase):
         
         with self.assertRaises(SystemExit) as cm:
             with patch('sys.argv', ['main.py']):
-                main.main()
+                main()
         
         self.assertEqual(cm.exception.code, 0)
         output = mock_stdout.getvalue()

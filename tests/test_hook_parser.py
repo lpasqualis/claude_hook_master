@@ -43,7 +43,7 @@ class TestHookParser(unittest.TestCase):
         input_data = '{"tool_name": "bash"}'
         parsed_data, output = self.parser.parse(input_data)
         
-        self.assertIn("Invalid hook input: missing 'hook' field", output)
+        self.assertIn("Invalid hook input: missing 'hook' or 'hook_event_name' field", output)
     
     def test_unknown_hook_type(self):
         """Test parsing unknown hook type."""
@@ -215,6 +215,32 @@ class TestHookParser(unittest.TestCase):
         _, output = self.parser.parse(input_data)
         
         self.assertTrue(output.startswith("[2025-08-02 15:30:45]"))
+    
+    def test_session_stop_event(self):
+        """Test session stop event parsing."""
+        input_data = json.dumps({
+            "session_id": "173ea15b-0fa8-4742-80dc-3f8a7c8efd2a",
+            "cwd": "/Users/test/project",
+            "hook_event_name": "Stop"
+        })
+        _, output = self.parser.parse(input_data)
+        
+        self.assertIn("Session stopped", output)
+        self.assertIn("id: 173ea15b...", output)
+        self.assertIn("/Users/test/project", output)
+    
+    def test_session_start_event(self):
+        """Test session start event parsing."""
+        input_data = json.dumps({
+            "session_id": "173ea15b-0fa8-4742-80dc-3f8a7c8efd2a",
+            "cwd": "/Users/test/project",
+            "hook_event_name": "Start"
+        })
+        _, output = self.parser.parse(input_data)
+        
+        self.assertIn("Session started", output)
+        self.assertIn("id: 173ea15b...", output)
+        self.assertIn("/Users/test/project", output)
 
 
 if __name__ == '__main__':
