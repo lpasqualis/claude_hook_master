@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from hook_parser import HookParser
+from .hook_parser import HookParser
 
 
 def setup_argparse():
@@ -30,17 +30,20 @@ def setup_argparse():
     return parser
 
 
-def append_to_log(log_file: Path, raw_input: str, output: str):
-    """Append raw input and output to log file."""
+def append_to_log(log_file: Path, raw_input: str, output: str = None):
+    """Append raw input and optionally output to log file."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"\n{'='*60}\n"
-    log_entry += f"Timestamp: {timestamp}\n"
-    log_entry += f"Raw Input:\n{raw_input}\n"
-    log_entry += f"Output:\n{output}\n"
+    # Create separator with timestamp centered
+    separator = f"=== [{timestamp}] " + "=" * (60 - len(timestamp) - 7)
+    log_entry = f"\n{separator}\n"
+    log_entry += f"Raw Input: {raw_input}\n"
+    if output:
+        log_entry += f"Output: {output.rstrip()}\n"
     
     try:
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(log_entry)
+            f.flush()
     except Exception as e:
         print(f"[{timestamp}] Warning: Failed to write to log file: {e}", file=sys.stderr)
 
@@ -60,6 +63,13 @@ def main():
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Error reading input: {e}", file=sys.stderr)
         sys.exit(1)
     
+    # Log raw input immediately if requested (for safety)
+    if args.log:
+        log_file = Path(args.log)
+        # Create parent directory if it doesn't exist
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        append_to_log(log_file, raw_input)
+    
     # Parse and describe the hook input
     hook_parser = HookParser()
     parsed_data, output = hook_parser.parse(raw_input)
@@ -67,10 +77,11 @@ def main():
     # Output the description
     print(output)
     
-    # Log if requested
+    # Update log with output if requested
     if args.log:
-        log_file = Path(args.log)
-        append_to_log(log_file, raw_input, output)
+        # Append the output to the same log entry
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(f"Output: {output.rstrip()}\n")
     
     # Exit with appropriate code
     if "Error" in output or "Invalid" in output:
