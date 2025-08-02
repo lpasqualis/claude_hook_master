@@ -23,6 +23,16 @@ With logging:
 echo '{"hook": "tool_use_started", "tool_name": "bash", "request_id": "123"}' | python src/main.py --log activity.log
 ```
 
+With logging (without human-readable format):
+```bash
+echo '{"hook": "tool_use_started", "tool_name": "bash", "request_id": "123"}' | python src/main.py --log activity.log --no-human-readable
+```
+
+With compact logging (no prettification, no human-readable format):
+```bash
+echo '{"hook": "tool_use_started", "tool_name": "bash", "request_id": "123"}' | python src/main.py --log activity.log --compact
+```
+
 Show help:
 ```bash
 python src/main.py --help
@@ -69,7 +79,38 @@ When using the `--log` option, the tool appends entries in this format:
 ```
 === [2025-08-02 14:30:45] ==================================
 Raw Input:
-{"hook": "tool_use_started", "tool_name": "bash", "request_id": "123"}
-Output:
-[2025-08-02 14:30:45] Tool 'bash' started (request_id: 123)
+{
+  "hook": "tool_use_started",
+  "tool_name": "bash",
+  "request_id": "123"
+}
+Output: [2025-08-02 14:30:45] Tool 'bash' started (request_id: 123)
+```
+
+For JSON fields containing newlines, a human-readable format is added:
+
+```
+=== [2025-08-02 14:30:45] ==================================
+Raw Input:
+{
+  "hook_event_name": "PostToolUse",
+  "tool_name": "LS",
+  "tool_response": "file1.txt\nfile2.txt\ndir/\n  subfile.txt"
+}
+
+Human-readable format:
+  tool_response:
+    file1.txt
+    file2.txt
+    dir/
+      subfile.txt
+Output: [2025-08-02 14:30:45] Completed tool 'LS' execution
+```
+
+With `--compact` option, the log format is more concise:
+
+```
+=== [2025-08-02 14:30:45] ==================================
+Raw Input: {"hook_event_name":"PostToolUse","tool_name":"LS","tool_response":"file1.txt\nfile2.txt\ndir/\n  subfile.txt","session_id":"test123"}
+Output: [2025-08-02 14:30:45] Completed tool 'LS' execution
 ```

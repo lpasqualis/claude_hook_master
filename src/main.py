@@ -27,16 +27,66 @@ def setup_argparse():
         help='Log raw hook input and output to specified file'
     )
     
+    parser.add_argument(
+        '--no-human-readable',
+        action='store_true',
+        help='Disable human-readable format for multiline fields in logs'
+    )
+    
+    parser.add_argument(
+        '--compact',
+        action='store_true',
+        help='Compact log format: no prettification and no human-readable format'
+    )
+    
     return parser
 
 
-def append_to_log(log_file: Path, raw_input: str, output: str = None):
+def append_to_log(log_file: Path, raw_input: str, output: str = None, show_human_readable: bool = True, compact: bool = False):
     """Append raw input and optionally output to log file."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # Create separator with timestamp centered
     separator = f"=== [{timestamp}] " + "=" * (60 - len(timestamp) - 7)
     log_entry = f"\n{separator}\n"
-    log_entry += f"Raw Input: {raw_input}\n"
+    
+    # Try to prettify JSON input
+    try:
+        parsed_json = json.loads(raw_input)
+        
+        if compact:
+            # Compact mode: no prettification
+            log_entry += f"Raw Input: {raw_input}\n"
+        else:
+            # Pretty print JSON
+            pretty_json = json.dumps(parsed_json, indent=2)
+            log_entry += f"Raw Input:\n{pretty_json}\n"
+            
+            # Add human-readable format for fields with newlines
+            if show_human_readable:
+                def extract_multiline_fields(obj, prefix=""):
+                    multiline_fields = []
+                    if isinstance(obj, dict):
+                        for key, value in obj.items():
+                            full_key = f"{prefix}.{key}" if prefix else key
+                            if isinstance(value, str) and '\n' in value:
+                                multiline_fields.append((full_key, value))
+                            elif isinstance(value, dict):
+                                multiline_fields.extend(extract_multiline_fields(value, full_key))
+                    return multiline_fields
+                
+                multiline_fields = extract_multiline_fields(parsed_json)
+                if multiline_fields:
+                    log_entry += f"\nHuman-readable format:\n"
+                    for field_name, field_value in multiline_fields:
+                        log_entry += f"  {field_name}:\n"
+                        lines = field_value.split('\n')
+                        for line in lines:
+                            log_entry += f"    {line}\n"
+            
+    except json.JSONDecodeError:
+        # If it's not valid JSON, just log as-is
+        log_entry += f"Raw Input: {raw_input}\n"
+    
     if output:
         log_entry += f"Output: {output.rstrip()}\n"
     
@@ -68,7 +118,9 @@ def main():
         log_file = Path(args.log)
         # Create parent directory if it doesn't exist
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        append_to_log(log_file, raw_input)
+        # Compact mode overrides no_human_readable
+        show_human_readable = not (args.compact or args.no_human_readable)
+        append_to_log(log_file, raw_input, show_human_readable=show_human_readable, compact=args.compact)
     
     # Parse and describe the hook input
     hook_parser = HookParser()
