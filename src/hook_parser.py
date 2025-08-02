@@ -23,10 +23,17 @@ class HookParser:
         """Parse hook input and return both the parsed data and description."""
         try:
             data = json.loads(input_data)
-            hook_type = data.get('hook')
+            
+            # Handle both 'hook' and 'hook_event_name' fields
+            hook_type = data.get('hook') or data.get('hook_event_name')
             
             if not hook_type:
-                return data, self._format_output("Invalid hook input: missing 'hook' field")
+                return data, self._format_output("Invalid hook input: missing 'hook' or 'hook_event_name' field")
+            
+            # Handle special session events and other event types
+            if hook_type in ['Stop', 'Start', 'SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 
+                            'Notification', 'SubagentStop', 'SubagentStart']:
+                return data, self._format_output(self._handle_extended_event(hook_type, data))
             
             if hook_type not in self.hook_handlers:
                 return data, self._format_output(f"Unknown hook type: {hook_type}")
@@ -107,3 +114,37 @@ class HookParser:
         error = data.get('error', 'Unknown error')
         error_type = data.get('error_type', 'unknown')
         return f"Error occurred ({error_type}): {error}"
+    
+    def _handle_extended_event(self, event_type: str, data: Dict[str, Any]) -> str:
+        """Handle extended event types."""
+        session_id = data.get('session_id', 'unknown')
+        cwd = data.get('cwd', 'unknown')
+        
+        if event_type == 'Stop':
+            return f"Session stopped (id: {session_id[:8]}...) in {cwd}"
+        elif event_type in ['Start', 'SessionStart']:
+            source = data.get('source', '')
+            source_info = f" via {source}" if source else ""
+            return f"Session started (id: {session_id[:8]}...){source_info} in {cwd}"
+        elif event_type == 'UserPromptSubmit':
+            prompt = data.get('prompt', '')
+            prompt_preview = prompt[:100] + '...' if len(prompt) > 100 else prompt
+            prompt_preview = prompt_preview.replace('\n', ' ')
+            return f"User submitted prompt: \"{prompt_preview}\""
+        elif event_type == 'PreToolUse':
+            tool_name = data.get('tool_name', 'unknown')
+            return f"About to use tool '{tool_name}'"
+        elif event_type == 'PostToolUse':
+            tool_name = data.get('tool_name', 'unknown')
+            response_preview = str(data.get('tool_response', ''))[:50] + '...' if len(str(data.get('tool_response', ''))) > 50 else str(data.get('tool_response', ''))
+            response_preview = response_preview.replace('\n', ' ')
+            return f"Completed tool '{tool_name}' execution"
+        elif event_type == 'Notification':
+            message = data.get('message', 'No message')
+            return f"Notification: {message}"
+        elif event_type == 'SubagentStop':
+            return f"Subagent stopped (session: {session_id[:8]}...)"
+        elif event_type == 'SubagentStart':
+            return f"Subagent started (session: {session_id[:8]}...)"
+        else:
+            return f"Session event '{event_type}' (id: {session_id[:8]}...)"

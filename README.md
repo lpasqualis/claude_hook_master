@@ -30,6 +30,7 @@ python src/main.py --help
 
 ## Supported Hook Types
 
+### Standard Claude Code Hooks
 - `tool_use_started`: When a tool starts execution
 - `tool_use_completed`: When a tool finishes execution
 - `tool_use_blocked`: When a tool use is blocked
@@ -39,6 +40,18 @@ python src/main.py --help
 - `response_chunk`: When a chunk of response is received
 - `response_completed`: When Claude completes a response
 - `error`: When an error occurs
+
+### Session Events
+- `Start`/`SessionStart`: When a Claude session starts
+- `Stop`: When a Claude session stops
+- `UserPromptSubmit`: When a user submits a prompt
+- `PreToolUse`: Before a tool is executed
+- `PostToolUse`: After a tool has been executed
+- `Notification`: System notifications (e.g., permission requests)
+- `SubagentStart`: When a subagent starts
+- `SubagentStop`: When a subagent stops
+
+Note: The utility accepts both `hook` and `hook_event_name` fields for compatibility with different event formats.
 
 ## Example Output
 
@@ -54,8 +67,7 @@ python src/main.py --help
 When using the `--log` option, the tool appends entries in this format:
 
 ```
-============================================================
-Timestamp: 2025-08-02 14:30:45
+=== [2025-08-02 14:30:45] ==================================
 Raw Input:
 {"hook": "tool_use_started", "tool_name": "bash", "request_id": "123"}
 Output:
