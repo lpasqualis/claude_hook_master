@@ -12,7 +12,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/claude-hook-master",
-    packages=find_packages(),
+    packages=['src'],
+    package_dir={'src': 'src'},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
@@ -22,6 +23,7 @@ setup(
     entry_points={
         "console_scripts": [
             "claude-hook-master=src.main:main",
+            "chm=src.main:main",  # Short alias
         ],
     },
 )
