@@ -1,0 +1,2 @@
+# ClaudeHookMaster has no external dependencies
+# It uses only Python standard library modules
